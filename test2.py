@@ -62,6 +62,7 @@ class GraphEditorApp:
         new_vertex = Vertex(x, y, z)
         new_vertex.display = vertex
         self.vertices.append(new_vertex)
+        self.print_vertices_to_console()
 
     def on_canvas_drag(self, event):
         if self.line:
@@ -84,6 +85,7 @@ class GraphEditorApp:
             if target_vertex:
                 self.canvas.create_line(self.active_vertex.x, self.active_vertex.y, target_vertex.x, target_vertex.y)
                 self.connections.append((self.active_vertex, target_vertex))
+                self.print_connections_to_console()
 
             self.active_vertex = None
 
@@ -159,6 +161,20 @@ class GraphEditorApp:
         new_x = x * math.cos(angle_rad) - y * math.sin(angle_rad)
         new_y = x * math.sin(angle_rad) + y * math.cos(angle_rad)
         return new_x, new_y
+
+    def print_vertices_to_console(self):
+        vertex_positions = [(vertex.x, vertex.y, vertex.z) for vertex in self.vertices]
+        print("Vertex positions:")
+        print(vertex_positions)
+
+    def print_connections_to_console(self):
+        connection_indices = []
+        for vertex1, vertex2 in self.connections:
+            index1 = self.vertices.index(vertex1)
+            index2 = self.vertices.index(vertex2)
+            connection_indices.append((index1, index2))
+        print("Connections:")
+        print(connection_indices)
 
 if __name__ == "__main__":
     root = tk.Tk()

@@ -55,6 +55,7 @@ class GraphEditorApp:
 
         vertex = self.canvas.create_oval(x - 5, y - 5, x + 5, y + 5, fill='black')
         self.vertices.append(Vertex(x, y, 0))
+        self.print_vertices_to_console()
 
     def on_canvas_drag(self, event):
         if self.line:
@@ -77,6 +78,7 @@ class GraphEditorApp:
             if target_vertex:
                 self.canvas.create_line(self.active_vertex.x, self.active_vertex.y, target_vertex.x, target_vertex.y)
                 self.connections.append((self.active_vertex, target_vertex))
+                self.print_connections_to_console()
 
             self.active_vertex = None
 
@@ -127,7 +129,19 @@ class GraphEditorApp:
             y2 = x2 * math.sin(math.radians(self.rotation_z_angle)) + y2 * math.cos(math.radians(self.rotation_z_angle))
 
             self.canvas.create_line(x1, y1, x2, y2)
+    def print_vertices_to_console(self):
+        vertex_positions = [(vertex.x, vertex.y, vertex.z) for vertex in self.vertices]
+        print("Vertex positions:")
+        print(vertex_positions)
 
+    def print_connections_to_console(self):
+        connection_indices = []
+        for vertex1, vertex2 in self.connections:
+            index1 = self.vertices.index(vertex1)
+            index2 = self.vertices.index(vertex2)
+            connection_indices.append((index1, index2))
+        print("Connections:")
+        print(connection_indices)
 if __name__ == "__main__":
     root = tk.Tk()
     app = GraphEditorApp(root)
