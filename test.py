@@ -15,18 +15,14 @@ class GraphEditorApp:
         self.canvas = tk.Canvas(root, width=400, height=400, bg='white')
         self.canvas.pack()
 
-        self.add_mode_btn = tk.Button(root, text="Add Mode", command=self.enable_add_mode)
-        self.add_mode_btn.pack(side=tk.LEFT)
-
-        self.connect_mode_btn = tk.Button(root, text="Connect Mode", command=self.enable_connect_mode)
-        self.connect_mode_btn.pack(side=tk.LEFT)
-
         self.mode = None
         self.vertices = []
+        self.connections = []
         self.active_vertex = None
         self.line = None
 
-        self.canvas.bind("<Button-1>", self.on_canvas_click)
+        self.canvas.bind("<Button-1>", self.on_canvas_left_click)
+        self.canvas.bind("<Button-3>", self.on_canvas_right_click)
         self.canvas.bind("<B1-Motion>", self.on_canvas_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_canvas_release)
 
@@ -46,30 +42,27 @@ class GraphEditorApp:
         self.rotation_y_angle = 0
         self.rotation_z_angle = 0
 
-    def enable_add_mode(self):
-        self.mode = "add"
+    def on_canvas_left_click(self, event):
+        x, y = event.x, event.y
+        for vertex in self.vertices:
+            if abs(vertex.x - x) <= 5 and abs(vertex.y - y) <= 5:
+                self.active_vertex = vertex
+                self.line = self.canvas.create_line(x, y, x, y)
+                break
 
-    def enable_connect_mode(self):
-        self.mode = "connect"
-
-    def on_canvas_click(self, event):
+    def on_canvas_right_click(self, event):
         x, y = event.x, event.y
 
-        if self.mode == "add":
-            vertex = self.canvas.create_oval(x - 5, y - 5, x + 5, y + 5, fill='black')
-            self.vertices.append(Vertex(x, y, 0))
-
-        elif self.mode == "connect":
-            self.active_vertex = Vertex(x, y, 0)
-            self.line = self.canvas.create_line(x, y, x, y)
+        vertex = self.canvas.create_oval(x - 5, y - 5, x + 5, y + 5, fill='black')
+        self.vertices.append(Vertex(x, y, 0))
 
     def on_canvas_drag(self, event):
-        if self.mode == "connect" and self.line:
+        if self.line:
             x, y = event.x, event.y
             self.canvas.coords(self.line, self.active_vertex.x, self.active_vertex.y, x, y)
 
     def on_canvas_release(self, event):
-        if self.mode == "connect" and self.line:
+        if self.line:
             x, y = event.x, event.y
             self.canvas.delete(self.line)
             self.line = None
@@ -83,7 +76,7 @@ class GraphEditorApp:
 
             if target_vertex:
                 self.canvas.create_line(self.active_vertex.x, self.active_vertex.y, target_vertex.x, target_vertex.y)
-                # Implement your logic here to handle connections between vertices
+                self.connections.append((self.active_vertex, target_vertex))
 
             self.active_vertex = None
 
@@ -115,9 +108,25 @@ class GraphEditorApp:
             # Display the z-coordinate as text near the vertex
             self.canvas.create_text(x + 10, y - 10, text=f"({vertex.x}, {vertex.y}, {vertex.z})")
 
-        for i, vertex in enumerate(self.vertices):
-            for j in range(i+1, len(self.vertices)):
-                self.canvas.create_line(vertex.x, vertex.y, self.vertices[j].x, self.vertices[j].y)
+        # Draw connections with 3D rotations
+        for vertex1, vertex2 in self.connections:
+            x1 = vertex1.x
+            y1 = vertex1.y * math.cos(math.radians(self.rotation_y_angle)) - vertex1.z * math.sin(math.radians(self.rotation_y_angle))
+            z1 = vertex1.y * math.sin(math.radians(self.rotation_y_angle)) + vertex1.z * math.cos(math.radians(self.rotation_y_angle))
+            y1 = vertex1.y * math.cos(math.radians(self.rotation_x_angle)) - z1 * math.sin(math.radians(self.rotation_x_angle))
+            z1 = vertex1.y * math.sin(math.radians(self.rotation_x_angle)) + z1 * math.cos(math.radians(self.rotation_x_angle))
+            x1 = x1 * math.cos(math.radians(self.rotation_z_angle)) - y1 * math.sin(math.radians(self.rotation_z_angle))
+            y1 = x1 * math.sin(math.radians(self.rotation_z_angle)) + y1 * math.cos(math.radians(self.rotation_z_angle))
+
+            x2 = vertex2.x
+            y2 = vertex2.y * math.cos(math.radians(self.rotation_y_angle)) - vertex2.z * math.sin(math.radians(self.rotation_y_angle))
+            z2 = vertex2.y * math.sin(math.radians(self.rotation_y_angle)) + vertex2.z * math.cos(math.radians(self.rotation_y_angle))
+            y2 = vertex2.y * math.cos(math.radians(self.rotation_x_angle)) - z2 * math.sin(math.radians(self.rotation_x_angle))
+            z2 = vertex2.y * math.sin(math.radians(self.rotation_x_angle)) + z2 * math.cos(math.radians(self.rotation_x_angle))
+            x2 = x2 * math.cos(math.radians(self.rotation_z_angle)) - y2 * math.sin(math.radians(self.rotation_z_angle))
+            y2 = x2 * math.sin(math.radians(self.rotation_z_angle)) + y2 * math.cos(math.radians(self.rotation_z_angle))
+
+            self.canvas.create_line(x1, y1, x2, y2)
 
 if __name__ == "__main__":
     root = tk.Tk()
