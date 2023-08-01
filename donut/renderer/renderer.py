@@ -3,37 +3,40 @@ import random
 import numpy as np
 import tkinter as tk
 
-class Mesh3D:
+class Renderer:
     def __init__(self):
         self.vertices = [
-            (100, 100, 100),
-            (100, 100, -100),
-            (100, -100, 100),
-            (100, -100, -100),
-            (-100, 100, 100),
-            (-100, 100, -100),
-            (-100, -100, 100),
-            (-100, -100, -100)
+            # (100, 100, 100),
+            # (100, 100, -100),
+            # (100, -100, 100),
+            # (100, -100, -100),
+            # (-100, 100, 100),
+            # (-100, 100, -100),
+            # (-100, -100, 100),
+            # (-100, -100, -100)
         ]
 
         self.edges = [
-            (0, 1), (0, 2), (0, 4),
-            (1, 3), (1, 5),
-            (2, 3), (2, 6),
-            (3, 7),
-            (4, 5), (4, 6),
-            (5, 7),
-            (6, 7)
+        #     (0, 1), (0, 2), (0, 4),
+        #     (1, 3), (1, 5),
+        #     (2, 3), (2, 6),
+        #     (3, 7),
+        #     (4, 5), (4, 6),
+        #     (5, 7),
+        #     (6, 7)
         ]
 
         self.faces = [
-            (0, 2, 6, 4),
-            (0, 1, 3, 2),
-            (0, 4, 5, 1),
-            (1, 5, 7, 3),
-            (2, 3, 7, 6),
-            (4, 6, 7, 5)
+            # (0, 2, 6, 4),
+            # (0, 1, 3, 2),
+            # (0, 4, 5, 1),
+            # (1, 5, 7, 3),
+            # (2, 3, 7, 6),
+            # (4, 6, 7, 5)
         ]
+
+        self.load_obj('horror.obj')
+        print(self.vertices, self.faces)
 
         self.rotation_matrix = np.eye(3)
         self.light_source = [200, -200, 200]
@@ -41,6 +44,35 @@ class Mesh3D:
         self.root = tk.Tk()
         self.canvas = tk.Canvas(self.root, width=500, height=500)
         self.canvas.pack()
+
+        self.d = 500 
+
+        self.slider = tk.Scale(self.root, from_=1, to=500, orient=tk.HORIZONTAL,
+                                    command=self.on_zoom_change)
+        self.slider.set(500)
+        self.slider.pack(side=tk.LEFT)
+
+        self.wireframe = False
+        tk.Button(self.root, text="wireframe", command=self.wireframe_toggle).pack()
+    
+    def wireframe_toggle(self):
+        self.wireframe = not self.wireframe
+    
+    def load_obj(self, file_path):
+        with open(file_path, 'r') as obj_file:
+            for line in obj_file:
+                if line.startswith('v '):
+                    _, x, y, z = line.strip().split()
+                    self.vertices.append((float(x)*100, float(y)*100, float(z)*100))
+                elif line.startswith('f '): 
+                    _, *face_indices = line.strip().split()
+                    face_indices = [int(idx.split('/')[0]) - 1 for idx in face_indices]
+                    self.faces.append(tuple(face_indices))
+                    
+    def on_zoom_change(self, _):
+        self.d = int(self.slider.get())
+        self.canvas.delete("all")
+        self.draw_mesh()
 
     def rotate_x(self, theta):
         return [
@@ -73,8 +105,7 @@ class Mesh3D:
         else:
             return x, y
 
-    def perspective_projection(self, vertices, d=500):
-        self.d = d
+    def perspective_projection(self, vertices):
         projected_vertices = [self.project_vertex(vertex) for vertex in vertices]
         return projected_vertices
 
@@ -87,9 +118,22 @@ class Mesh3D:
         view_vector = np.array([0, 0, -1])  # towards me
         return np.dot(normal, view_vector) > 0
 
-    def draw_mesh(self):
+    def sort_faces(self):
+        face_depths = []
         for face in self.faces:
-            if self.is_backfacing(face):  # Skip backfacing faces
+            depth_sum = 0
+            for vertex_index in face:
+                x, y, z = self.vertices[vertex_index]
+                depth_sum += z
+            avg_depth = depth_sum / len(face)
+            face_depths.append((face, avg_depth))
+
+        sorted_faces = sorted(face_depths, key=lambda item: item[1], reverse=True)
+        return [face for face, _ in sorted_faces]
+
+    def draw_mesh(self):
+        for face in self.sort_faces():
+            if self.is_backfacing(face):  # skip backfacing faces
                 continue
 
             v1 = np.array(self.vertices[face[0]])
@@ -105,7 +149,7 @@ class Mesh3D:
 
             coords = self.perspective_projection([self.vertices[i] for i in face if isinstance(i, int)])
             coords = [(x + 250, y + 250) for x, y in coords]  # Offset the coordinates
-            self.canvas.create_polygon(coords, fill=color)
+            self.canvas.create_polygon(coords, fill=color if not self.wireframe else "", outline="black" if self.wireframe else "")
 
         # for edge in self.edges:
         #     x1, y1, z1 = self.vertices[edge[0]]
@@ -136,5 +180,5 @@ class Mesh3D:
         self.root.mainloop()
 
 if __name__ == "__main__":
-    mesh = Mesh3D()
+    mesh = Renderer()
     mesh.run()
