@@ -1,0 +1,140 @@
+import math
+import random
+import numpy as np
+import tkinter as tk
+
+class Mesh3D:
+    def __init__(self):
+        self.vertices = [
+            (100, 100, 100),
+            (100, 100, -100),
+            (100, -100, 100),
+            (100, -100, -100),
+            (-100, 100, 100),
+            (-100, 100, -100),
+            (-100, -100, 100),
+            (-100, -100, -100)
+        ]
+
+        self.edges = [
+            (0, 1), (0, 2), (0, 4),
+            (1, 3), (1, 5),
+            (2, 3), (2, 6),
+            (3, 7),
+            (4, 5), (4, 6),
+            (5, 7),
+            (6, 7)
+        ]
+
+        self.faces = [
+            (0, 2, 6, 4),
+            (0, 1, 3, 2),
+            (0, 4, 5, 1),
+            (1, 5, 7, 3),
+            (2, 3, 7, 6),
+            (4, 6, 7, 5)
+        ]
+
+        self.rotation_matrix = np.eye(3)
+        self.light_source = [200, -200, 200]
+
+        self.root = tk.Tk()
+        self.canvas = tk.Canvas(self.root, width=500, height=500)
+        self.canvas.pack()
+
+    def rotate_x(self, theta):
+        return [
+            [1, 0, 0],
+            [0, math.cos(theta), -math.sin(theta)],
+            [0, math.sin(theta), math.cos(theta)]
+        ]
+
+    def rotate_y(self, theta):
+        return [
+            [math.cos(theta), 0, math.sin(theta)],
+            [0, 1, 0],
+            [-math.sin(theta), 0, math.cos(theta)]
+        ]
+
+    def rotate_z(self, theta):
+        return [
+            [math.cos(theta), -math.sin(theta), 0],
+            [math.sin(theta), math.cos(theta), 0],
+            [0, 0, 1]
+        ]
+
+    def project_vertex(self, vertex):
+        transformed_vertex = np.dot(self.rotation_matrix, vertex)
+        x, y, z = transformed_vertex
+        if z != 0:
+            projected_x = x * self.d / (z + self.d)
+            projected_y = y * self.d / (z + self.d)
+            return projected_x, projected_y
+        else:
+            return x, y
+
+    def perspective_projection(self, vertices, d=500):
+        self.d = d
+        projected_vertices = [self.project_vertex(vertex) for vertex in vertices]
+        return projected_vertices
+
+    def is_backfacing(self, face):
+        v1 = np.array(self.vertices[face[0]])
+        v2 = np.array(self.vertices[face[1]])
+        v3 = np.array(self.vertices[face[2]])
+        normal = np.cross(v2 - v1, v3 - v1)
+
+        view_vector = np.array([0, 0, -1])  # towards me
+        return np.dot(normal, view_vector) > 0
+
+    def draw_mesh(self):
+        for face in self.faces:
+            if self.is_backfacing(face):  # Skip backfacing faces
+                continue
+
+            v1 = np.array(self.vertices[face[0]])
+            v2 = np.array(self.vertices[face[1]])
+            v3 = np.array(self.vertices[face[2]])
+            normal = np.cross(v2 - v1, v3 - v1)
+
+            to_light = np.array(self.light_source) - v1
+            cos_theta = np.dot(normal, to_light) / (np.linalg.norm(normal) * np.linalg.norm(to_light))
+
+            shade = int(255 * (cos_theta + 1) / 2)
+            color = '#{:02x}{:02x}{:02x}'.format(shade, shade, shade)
+
+            coords = self.perspective_projection([self.vertices[i] for i in face if isinstance(i, int)])
+            coords = [(x + 250, y + 250) for x, y in coords]  # Offset the coordinates
+            self.canvas.create_polygon(coords, fill=color)
+
+        # for edge in self.edges:
+        #     x1, y1, z1 = self.vertices[edge[0]]
+        #     x2, y2, z2 = self.vertices[edge[1]]
+        #     coords = self.perspective_projection([(x1, y1, z1), (x2, y2, z2)])
+        #     x1, y1 = coords[0]
+        #     x2, y2 = coords[1]
+        #     self.canvas.create_line(x1 + 250, y1 + 250, x2 + 250, y2 + 250)
+
+        # for vertex in self.vertices:
+        #     x, y, z = vertex
+        #     coords = self.perspective_projection([(x, y, z)])
+        #     x, y = coords[0]
+        #     r = 5
+        #     self.canvas.create_oval(x - r + 250, y - r + 250, x + r + 250, y + r + 250, fill='white')
+
+    def animate(self):
+        self.rotation_matrix = np.dot(self.rotate_x(0.01), np.dot(self.rotate_y(0.02), self.rotate_z(0.03)))
+        self.vertices = [np.dot(self.rotation_matrix, vertex) for vertex in self.vertices]
+
+        self.canvas.delete("all")
+        self.draw_mesh()
+
+        self.root.after(10, self.animate)
+
+    def run(self):
+        self.animate()
+        self.root.mainloop()
+
+if __name__ == "__main__":
+    mesh = Mesh3D()
+    mesh.run()
