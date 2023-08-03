@@ -1,11 +1,16 @@
 import math
-import random
-import numpy as np
 import tkinter as tk
+from tkinter import ttk
 
-class Renderer:
-    def __init__(self):
-        self.vertices = [
+import numpy as np
+
+
+class Renderer(ttk.Frame):
+    def __init__(self, master, *a, **kw):
+        super().__init__(master, *a, **kw)
+        
+        self.offset = 230
+        self.vertices = self.initial = [
             (100, 100, 100),
             (100, 100, -100),
             (100, -100, 100),
@@ -17,13 +22,13 @@ class Renderer:
         ]
 
         self.edges = [
-        #     (0, 1), (0, 2), (0, 4),
-        #     (1, 3), (1, 5),
-        #     (2, 3), (2, 6),
-        #     (3, 7),
-        #     (4, 5), (4, 6),
-        #     (5, 7),
-        #     (6, 7)
+            (0, 1), (0, 2), (0, 4),
+            (1, 3), (1, 5),
+            (2, 3), (2, 6),
+            (3, 7),
+            (4, 5), (4, 6),
+            (5, 7),
+            (6, 7)
         ]
 
         self.faces = [
@@ -40,42 +45,37 @@ class Renderer:
         self.rotation_z = 0.0
         self.light_source = [200, -200, 200]
 
-        self.load_obj('sedan.obj')
+        #self.load_obj('horror.obj')
 
-        self.root = tk.Tk()
-        self.canvas = tk.Canvas(self.root, width=500, height=500)
-        self.canvas.pack(expand=True, fill=tk.BOTH)
+        self.canvas = tk.Canvas(self, width=400, height=400)
+        self.canvas.pack(expand=True, fill=tk.BOTH, side=tk.LEFT)
 
         self.d = 500 
         self.is_animating = False
+        self.curves = False
 
-        self.slider = tk.Scale(self.root, from_=1, to=500, orient=tk.HORIZONTAL, command=self.on_zoom_change)
+        self.slider = ttk.Scale(self, from_=1, to=500, orient=tk.VERTICAL, command=self.on_zoom_change)
         self.slider.set(500)
-        self.slider.pack(side=tk.LEFT)
+        self.slider.pack()
 
         self.wireframe = True
         self.create_gui()
 
     def on_x_rotation_change(self, _):
         self.rotation_x = math.radians(self.x_rotation_slider.get())
-        self.x_rotation_label.config(text=f"X Rotation: {self.rotation_x:.2f} degrees")
         self.update_rotation_angles()
 
     def on_y_rotation_change(self, _):
         self.rotation_y = math.radians(self.y_rotation_slider.get())
-        self.y_rotation_label.config(text=f"Y Rotation: {self.rotation_y:.2f} degrees")
         self.update_rotation_angles()
 
     def on_z_rotation_change(self, _):
         self.rotation_z = math.radians(self.z_rotation_slider.get())
-        self.z_rotation_label.config(text=f"Z Rotation: {self.rotation_z:.2f} degrees")
         self.update_rotation_angles()
 
     def update_rotation_angles(self):
         self.rotation_matrix = np.dot(self.rotate_x(math.radians(self.x_rotation_slider.get())), np.dot(self.rotate_y(math.radians(self.y_rotation_slider.get())), self.rotate_z(math.radians(self.z_rotation_slider.get()))))
-
         self.vertices = [np.dot(self.rotation_matrix, vertex) for vertex in self.initial]
-
         self.canvas.delete("all")
         self.draw_mesh()
 
@@ -84,33 +84,37 @@ class Renderer:
         if self.is_animating:
             self.animate()
         else:
-            self.root.after_cancel(self.animation_job)
+            self.after_cancel(self.animation_job)
 
     def create_gui(self):
-        self.x_rotation_slider = tk.Scale(self.root, from_=1, to=360, orient=tk.HORIZONTAL, command=self.on_x_rotation_change)
+        self.x_rotation_slider = ttk.Scale(self, from_=1, to=360, orient=tk.HORIZONTAL)
+        self.x_rotation_slider.config(command=self.on_x_rotation_change)
         self.x_rotation_slider.set(0)
-        self.x_rotation_slider.pack(fill=tk.X, expand=True)
-        self.x_rotation_label = tk.Label(self.root, text="X Rotation: 0.00 degrees")
-        self.x_rotation_label.pack()
+        self.x_rotation_slider.pack(fill=tk.X)
 
-        self.y_rotation_slider = tk.Scale(self.root, from_=1, to=360, orient=tk.HORIZONTAL, command=self.on_y_rotation_change)
+        self.y_rotation_slider = ttk.Scale(self, from_=1, to=360, orient=tk.HORIZONTAL)
+        self.y_rotation_slider.config(command=self.on_y_rotation_change)
         self.y_rotation_slider.set(0)
-        self.y_rotation_slider.pack(fill=tk.X, expand=True)
-        self.y_rotation_label = tk.Label(self.root, text="Y Rotation: 0.00 degrees")
-        self.y_rotation_label.pack()
+        self.y_rotation_slider.pack(fill=tk.X)
 
-        self.z_rotation_slider = tk.Scale(self.root, from_=1, to=360, orient=tk.HORIZONTAL, command=self.on_z_rotation_change)
+        self.z_rotation_slider = ttk.Scale(self, from_=1, to=360, orient=tk.HORIZONTAL)
+        self.z_rotation_slider.config(command=self.on_z_rotation_change)
         self.z_rotation_slider.set(0)
-        self.z_rotation_slider.pack(fill=tk.X, expand=True)
-        self.z_rotation_label = tk.Label(self.root, text="Z Rotation: 0.00 degrees")
-        self.z_rotation_label.pack()
+        self.z_rotation_slider.pack(fill=tk.X)
 
-        tk.Button(self.root, text="Toggle Animation", command=self.toggle_animation).pack()
-        tk.Button(self.root, text="Toggle Wireframe", command=self.wireframe_toggle).pack()
-
-
+        ttk.Button(self, text="spin", command=self.toggle_animation).pack()
+        ttk.Button(self, text="wireframe", command=self.wireframe_toggle).pack()
+        ttk.Button(self, text="curves owo", command=self.curves_toggle).pack()
+        
     def wireframe_toggle(self):
         self.wireframe = not self.wireframe
+        self.canvas.delete("all")
+        self.draw_mesh()
+
+    def curves_toggle(self):
+        self.curves = not self.curves
+        self.canvas.delete("all")
+        self.draw_mesh()
     
     def load_obj(self, file_path):
         self.vertices = []
@@ -194,8 +198,8 @@ class Renderer:
         if self.wireframe:
             for face in self.sort_faces():
                 coords = self.perspective_projection([self.vertices[i] for i in face])
-                coords = [(x + 250, y + 250) for x, y in coords]  # Offset the coordinates
-                self.canvas.create_polygon(coords, outline="black", fill="")
+                coords = [(x + self.offset, y + self.offset) for x, y in coords]  # Offset the coordinates
+                self.canvas.create_polygon(coords, outline="white", fill="", smooth=self.curves)
             return
         
         for face in self.sort_faces():
@@ -214,8 +218,8 @@ class Renderer:
             color = '#{:02x}{:02x}{:02x}'.format(shade, shade, shade)
 
             coords = self.perspective_projection([self.vertices[i] for i in face])
-            coords = [(x + 250, y + 250) for x, y in coords]  # Offset the coordinates
-            self.canvas.create_polygon(coords, fill=color)
+            coords = [(x + self.offset, y + self.offset) for x, y in coords]  # Offset the coordinates
+            self.canvas.create_polygon(coords, fill=color, smooth=self.curves)
 
         # for edge in self.edges:
         #     x1, y1, z1 = self.vertices[edge[0]]
@@ -223,27 +227,27 @@ class Renderer:
         #     coords = self.perspective_projection([(x1, y1, z1), (x2, y2, z2)])
         #     x1, y1 = coords[0]
         #     x2, y2 = coords[1]
-        #     self.canvas.create_line(x1 + 250, y1 + 250, x2 + 250, y2 + 250)
+        #     self.canvas.create_line(x1 + self.offset, y1 + self.offset, x2 + self.offset, y2 + self.offset)
 
         # for vertex in self.vertices:
         #     x, y, z = vertex
         #     coords = self.perspective_projection([(x, y, z)])
         #     x, y = coords[0]
-        #     self.canvas.create_text(x + 250, y + 250, text="+", fill='black')
+        #     self.canvas.create_text(x + self.offset, y + self.offset, text="+", fill='black')
 
     def animate(self):
-        self.rotation_matrix = np.dot(self.rotate_x(0.0), np.dot(self.rotate_y(0.2), self.rotate_z(0.0)))
+        self.rotation_matrix = np.dot(self.rotate_x(0.0), np.dot(self.rotate_y(0.1), self.rotate_z(0.0)))
         self.vertices = [np.dot(self.rotation_matrix, vertex) for vertex in self.vertices]
 
         self.canvas.delete("all")
         self.draw_mesh()
 
         if self.is_animating:
-            self.animation_job = self.root.after(10, self.animate)
+            self.animation_job = self.after(10, self.animate)
 
     def run(self):
         self.animate()
-        self.root.mainloop()
+        self.mainloop()
 
 if __name__ == "__main__":
     mesh = Renderer()
